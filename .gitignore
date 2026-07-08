@@ -1,0 +1,25 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.wrangler/
+packages/frontend/dist/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# python
+__pycache__/
+*.pyc
+.venv/
+agent/.venv/
+*.egg-info/
+
+# os / editor
+.DS_Store
+*.log

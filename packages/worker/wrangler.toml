@@ -1,0 +1,18 @@
+name = "voice-playground-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Public vars (safe to expose). Override per-environment as needed.
+# Defaults target the fully-local Docker stack (docker-compose.yml). For
+# LiveKit Cloud, set LIVEKIT_URL = "wss://<your-project>.livekit.cloud".
+[vars]
+LIVEKIT_URL = "ws://localhost:7880"
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+# Secrets (DO NOT put in this file). Set them with:
+#   wrangler secret put LIVEKIT_API_KEY
+#   wrangler secret put LIVEKIT_API_SECRET
+# For local `wrangler dev`, put them in packages/worker/.dev.vars instead:
+#   LIVEKIT_API_KEY=...
+#   LIVEKIT_API_SECRET=...

@@ -1,0 +1,17 @@
+# Local-dev LiveKit server config (INSECURE — dev only).
+# The advertised ICE IP is overridden on the command line with --node-ip
+# (your host LAN IP), so both the host browser and the agent container can
+# reach media. See docker-compose.yml.
+port: 7880
+bind_addresses:
+  - ""
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+keys:
+  # dev-only key/secret (secret must be >= 32 chars). Used by the worker to
+  # sign tokens and by the agent to register. Change for anything non-local.
+  devkey: devsecret0123456789abcdef0123456789
+logging:
+  level: info

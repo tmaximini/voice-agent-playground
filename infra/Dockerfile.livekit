@@ -1,0 +1,5 @@
+# Thin image that bakes the local-dev LiveKit config into the official server.
+# Baking (vs a host bind mount) means this works with zero Docker Desktop
+# file-sharing setup. --bind and --node-ip are still supplied at runtime.
+FROM livekit/livekit-server:latest
+COPY livekit.yaml /etc/livekit.yaml

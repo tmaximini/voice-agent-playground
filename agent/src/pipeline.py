@@ -1,0 +1,80 @@
+"""Assemble a LiveKit AgentSession from the session's config + BYOK keys.
+
+VAD -> STT -> LLM -> TTS with semantic turn detection. Streaming is left
+overlapping (TTS can start before the LLM finishes) — do not serialize it, that
+is core to realistic latency.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+
+from livekit.agents import Agent, AgentSession, JobContext
+from livekit.plugins.turn_detector.english import EnglishModel
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+from keys import SessionInit
+from metrics import attach_metrics
+from providers import build_llm, build_stt, build_tts
+
+logger = logging.getLogger("voice-playground-agent")
+
+DEFAULT_SYSTEM_PROMPT = (
+    "You are a helpful, concise voice assistant. Keep replies short and natural "
+    "for spoken conversation. Do not use emojis or markdown."
+)
+
+
+async def run_pipeline(ctx: JobContext, init: SessionInit, vad) -> None:
+    config = init.config
+    keys = init.keys  # used only to construct clients below; never logged
+
+    td = config.turn_detection
+    model_cls = EnglishModel if td.model == "english" else MultilingualModel
+    turn_detector = model_cls(unlikely_threshold=td.unlikely_threshold)
+
+    session = AgentSession(
+        vad=vad,
+        stt=build_stt(config.stt, keys),
+        llm=build_llm(config.llm, keys),
+        tts=build_tts(config.tts, keys),
+        turn_handling={
+            # Must stay explicit: omitting turn_detection makes 1.6+ fall back
+            # to LiveKit-hosted inference, which would bypass the BYOK/local
+            # guarantee this project is built on.
+            "turn_detection": turn_detector,
+            # The semantic model gates the commit: a confident end-of-turn
+            # waits only min_delay of silence; an unfinished-sounding utterance
+            # gets up to max_delay to continue.
+            "endpointing": {
+                "mode": td.mode,
+                "min_delay": td.min_delay,
+                "max_delay": td.max_delay,
+            },
+            # LLM runs speculatively during the endpointing wait; preemptive
+            # TTS overlaps synthesis too but bills retracted turns.
+            "preemptive_generation": {
+                "enabled": True,
+                "preemptive_tts": td.preemptive_tts,
+            },
+        },
+    )
+
+    attach_metrics(
+        session=session,
+        room=ctx.room,
+        loop=asyncio.get_running_loop(),
+        stt_provider=config.stt.provider,
+        llm_provider=config.llm.provider,
+        tts_provider=config.tts.provider,
+    )
+
+    await session.start(
+        agent=Agent(instructions=config.system_prompt or DEFAULT_SYSTEM_PROMPT),
+        room=ctx.room,
+    )
+
+    # A fixed greeting so the user knows the agent is live. say() goes straight
+    # to TTS — no LLM round-trip, so it plays immediately after join.
+    await session.say("Hi, welcome to the playground. What can I do for you?")

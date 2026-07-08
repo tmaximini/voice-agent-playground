@@ -1,0 +1,11 @@
+# LiveKit Agents worker (Python). Pin to the 1.x line.
+# NOTE: BYOK requires the individual provider plugins (which accept api_key=)
+# — do NOT use livekit.agents.inference.* here, as that routes through
+# LiveKit-hosted keys and bypasses the user's per-session keys.
+livekit-agents>=1.0,<2
+livekit-plugins-silero>=1.0
+livekit-plugins-deepgram>=1.0
+livekit-plugins-openai>=1.0
+livekit-plugins-elevenlabs>=1.0
+livekit-plugins-turn-detector>=1.0
+python-dotenv>=1.0

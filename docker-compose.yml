@@ -1,0 +1,43 @@
+# Fully-local dev stack: LiveKit SFU + agent worker, both in Docker.
+# The Cloudflare Worker (token API) and the frontend run on the HOST with hot
+# reload — see README "Fully local (Docker)".
+#
+# WebRTC media from a host browser to a containerized SFU requires the SFU to
+# advertise an IP reachable from BOTH the host browser and the agent container.
+# On macOS/Windows that is your machine's LAN IP. Set it in a root .env file:
+#   macOS (Wi-Fi):  echo "NODE_IP=$(ipconfig getifaddr en0)" > .env
+#   Linux:          echo "NODE_IP=$(hostname -I | awk '{print $1}')" > .env
+#
+# Then:  docker compose up --build
+
+services:
+  livekit:
+    build:
+      context: ./infra
+      dockerfile: Dockerfile.livekit
+    command:
+      - "--config"
+      - "/etc/livekit.yaml"
+      - "--bind"
+      - "0.0.0.0"
+      - "--node-ip"
+      - "${NODE_IP:?set NODE_IP in .env to your machine's LAN IP}"
+    restart: unless-stopped
+    ports:
+      - "7880:7880" # signaling (ws)
+      - "7881:7881" # RTC / ICE-TCP fallback
+      - "7882:7882/udp" # RTC / UDP single-port mux
+
+  agent:
+    build: ./agent
+    # uses the Dockerfile CMD: python src/main.py start
+    restart: unless-stopped
+    depends_on:
+      - livekit
+    environment:
+      # Agent reaches the SFU over the compose network; media candidates use
+      # NODE_IP (the LAN IP), which the container reaches via the host.
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret0123456789abcdef0123456789
+      # Provider (BYOK) keys are NOT here — they arrive per-session from the browser.
