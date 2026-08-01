@@ -1,16 +1,20 @@
-import type { TurnDetectionConfig } from "@voice-playground/shared";
-import { LANGUAGES } from "../data/providers";
+import type { TurnDetectionConfig, VoiceConfig } from "@voice-playground/shared";
+import { LANGUAGES, VOICES } from "../data/providers";
 import Modal from "./Modal";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  presetName: string;
+  onPresetNameChange: (value: string) => void;
   systemPrompt: string;
   onSystemPromptChange: (value: string) => void;
   language: string;
   onLanguageChange: (value: string) => void;
   turnDetection: TurnDetectionConfig;
   onTurnDetectionChange: (value: TurnDetectionConfig) => void;
+  voice: VoiceConfig;
+  onVoiceChange: (value: VoiceConfig) => void;
   onSave: () => void;
   disabled: boolean;
 }
@@ -24,29 +28,77 @@ const labelCls = "text-xs text-neutral-400";
 export default function SettingsModal({
   open,
   onClose,
+  presetName,
+  onPresetNameChange,
   systemPrompt,
   onSystemPromptChange,
   language,
   onLanguageChange,
   turnDetection,
   onTurnDetectionChange,
+  voice,
+  onVoiceChange,
   onSave,
   disabled,
 }: Props) {
   const td = turnDetection;
   const set = (patch: Partial<TurnDetectionConfig>) =>
     onTurnDetectionChange({ ...td, ...patch });
+  const setVoice = (patch: Partial<VoiceConfig>) => onVoiceChange({ ...voice, ...patch });
+  const isKnownVoice = VOICES.some((v) => v.id === voice.voiceId);
+
+  const slider = (
+    label: string,
+    key: "stability" | "similarityBoost" | "style" | "speed",
+    min: number,
+    max: number,
+    fallback: number,
+  ) => {
+    const value = voice[key] ?? fallback;
+    return (
+      <label className="block space-y-1">
+        <span className={`${labelCls} flex justify-between`}>
+          {label}
+          <span className="font-mono tabular-nums text-neutral-500">{value.toFixed(2)}</span>
+        </span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={0.05}
+          disabled={disabled}
+          value={value}
+          onChange={(e) => setVoice({ [key]: Number(e.target.value) })}
+          className="w-full accent-emerald-500"
+        />
+      </label>
+    );
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Settings">
       <div className="space-y-5">
         <label className="block space-y-2">
           <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+            Assistant name
+          </span>
+          <input
+            type="text"
+            autoFocus
+            disabled={disabled}
+            value={presetName}
+            onChange={(e) => onPresetNameChange(e.target.value)}
+            placeholder="e.g. Lena — pharmacy support"
+            className={inputCls}
+          />
+        </label>
+
+        <label className="block space-y-2">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
             System prompt
           </span>
           <textarea
             rows={6}
-            autoFocus
             disabled={disabled}
             value={systemPrompt}
             onChange={(e) => onSystemPromptChange(e.target.value)}
@@ -54,6 +106,55 @@ export default function SettingsModal({
             className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-3 text-sm leading-relaxed outline-none focus:border-neutral-500 disabled:opacity-50 resize-y"
           />
         </label>
+
+        <div className="space-y-3">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+            Voice (ElevenLabs)
+          </span>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1">
+              <span className={labelCls}>Voice</span>
+              <select
+                disabled={disabled}
+                value={isKnownVoice ? voice.voiceId : "custom"}
+                onChange={(e) => {
+                  if (e.target.value !== "custom") setVoice({ voiceId: e.target.value });
+                }}
+                className={inputCls}
+              >
+                {VOICES.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label} — {v.hint}
+                  </option>
+                ))}
+                <option value="custom">Custom voice ID…</option>
+              </select>
+            </label>
+
+            <label className="block space-y-1">
+              <span className={labelCls}>Voice ID (any from your library)</span>
+              <input
+                type="text"
+                disabled={disabled}
+                value={voice.voiceId}
+                onChange={(e) => setVoice({ voiceId: e.target.value.trim() })}
+                placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"
+                className={`${inputCls} font-mono text-xs`}
+              />
+            </label>
+
+            {slider("Stability (lower = expressive)", "stability", 0, 1, 0.5)}
+            {slider("Similarity", "similarityBoost", 0, 1, 0.75)}
+            {slider("Style exaggeration", "style", 0, 1, 0)}
+            {slider("Speed", "speed", 0.8, 1.2, 1.0)}
+          </div>
+
+          <p className="text-[11px] text-neutral-500">
+            Lower stability sounds livelier but less consistent; style &gt; 0 adds latency.
+            Deep male tones: Adam or Josh. Soft female: Sarah or Rachel.
+          </p>
+        </div>
 
         <div className="space-y-3">
           <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">

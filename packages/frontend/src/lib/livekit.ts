@@ -66,7 +66,19 @@ export async function startSession(init: SessionInit): Promise<VoiceSession> {
   const identity = `user-${Math.floor(performance.now())}`;
   const { token, url } = await fetchToken(roomName, identity);
 
-  const room = new Room({ adaptiveStream: true, dynacast: true });
+  const room = new Room({
+    adaptiveStream: true,
+    dynacast: true,
+    // Explicit AEC/NS: without it, speaker output loops into the mic, gets
+    // transcribed as user speech, and barge-in makes the agent interrupt
+    // itself. Browser AEC quality still varies (Firefox+speakers is weak) —
+    // headphones are the reliable fix; see README troubleshooting.
+    audioCaptureDefaults: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
 
   // Config + keys for the agent. The agent joins a moment AFTER us and LiveKit
   // does NOT buffer data messages for late joiners — so we (re)send this when

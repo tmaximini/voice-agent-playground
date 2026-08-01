@@ -1,4 +1,4 @@
-import type { PipelineConfig, TurnDetectionConfig } from "@voice-playground/shared";
+import type { PipelineConfig, TurnDetectionConfig, VoiceConfig } from "@voice-playground/shared";
 
 // Static provider catalog. Phase 1 uses a single hardcoded pipeline; the shape
 // is intentionally ready for Phase 2 dropdowns (STT/LLM/TTS provider+model+voice).
@@ -44,6 +44,31 @@ export const TTS_PROVIDERS: ProviderOption[] = [
     models: [{ id: "eleven_flash_v2_5", label: "Flash v2.5" }],
   },
 ];
+
+/**
+ * Curated ElevenLabs premade voices (IDs are stable, available on every
+ * account). Any other voice from your ElevenLabs library works via the
+ * custom-ID field in Settings.
+ */
+export const VOICES: { id: string; label: string; hint: string }[] = [
+  { id: "21m00Tcm4TlvDq8ikWAM", label: "Rachel", hint: "calm female" },
+  { id: "EXAVITQu4vr4xnSDxMaL", label: "Sarah", hint: "soft female" },
+  { id: "XB0fDUnXU5powFXDhCwa", label: "Charlotte", hint: "warm female" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", label: "Lily", hint: "British female" },
+  { id: "pNInz6obpgDQGcFmaJgB", label: "Adam", hint: "deep male" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", label: "Josh", hint: "deep male" },
+  { id: "JBFqnCBsd6RMkjVDRZzb", label: "George", hint: "warm British male" },
+  { id: "ErXwobaYiN019PkySvjV", label: "Antoni", hint: "well-rounded male" },
+];
+
+/** ElevenLabs defaults: balanced delivery, normal rate. */
+export const DEFAULT_VOICE: VoiceConfig = {
+  voiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel
+  stability: 0.5,
+  similarityBoost: 0.75,
+  style: 0,
+  speed: 1.0,
+};
 
 /** STT languages selectable in Settings ("multi" = Deepgram code-switching). */
 export const LANGUAGES: { id: string; label: string }[] = [

@@ -24,6 +24,13 @@ the instrumented dashboard is the point.
   stage latencies.
 - **Live transcripts** — interim STT results stream to the browser over a data
   channel; finalized turns accumulate every Deepgram segment, not just the last.
+- **Assistant presets** — save named bundles of system prompt + language +
+  turn-detection profile, and switch/duplicate them to A/B different configs
+  against the same dashboard. Stored locally; keys are never part of a preset.
+- **Session history & cost estimates** — finished calls are archived to
+  localStorage with full transcript, per-turn latency, accumulated token/char
+  usage, and a rough cost estimate (price table is editable in
+  `packages/frontend/src/data/prices.ts`).
 - **BYOK, keys never touch a server** — provider keys go browser → room → agent,
   are used for that session only, and are never logged or persisted.
 
@@ -150,6 +157,37 @@ Open http://localhost:5173, paste your three API keys, click **Start**, grant mi
 access, and speak. The six headline latency numbers update per turn, the
 transcript streams live as you talk, and **Prompt & turn detection → Edit**
 opens the tuning panel.
+
+## Troubleshooting
+
+**`ICE failed` in the console; stuck on "connecting" (signaling connects, then
+media fails).** The SFU is advertising a media IP your browser can't reach —
+almost always a stale `NODE_IP` after your machine got a new DHCP lease (new
+Wi-Fi network, router restart). Refresh it and recreate the SFU:
+
+```bash
+echo "NODE_IP=$(ipconfig getifaddr en0)" > .env      # Linux: hostname -I | awk '{print $1}'
+docker compose up -d --force-recreate livekit
+```
+
+On recent macOS also check **System Settings → Privacy & Security → Local
+Network**: your browser needs permission to reach your own LAN IP (localhost is
+exempt, which is why signaling still works). Quick test: open
+`http://<your-LAN-IP>:7880` in the browser — LiveKit should answer "OK".
+
+**The agent talks to itself / your transcript shows the agent's words as
+"you" / replies cut off mid-sentence.** Acoustic feedback: the agent's voice
+from your speakers re-enters the mic, is transcribed as user speech, and
+triggers barge-in — the agent interrupts itself. Echo cancellation is enabled,
+but browser AEC on open laptop speakers is unreliable (Firefox on macOS
+especially). **Use headphones** — this eliminates it completely. Chrome's AEC
+also copes noticeably better than Firefox's if you must use speakers.
+
+**Mic connects but nothing answers.** The agent isn't in the room — you should
+always hear the greeting within a couple of seconds of starting a call. Check
+`docker compose ps` (is the agent up?) and `docker compose logs agent` for
+`registered worker`. Remember agent code is baked into the image: after editing
+`agent/src/*`, re-run `docker compose up -d --build agent`.
 
 ## Roadmap
 

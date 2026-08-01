@@ -36,6 +36,23 @@ export interface TurnDetectionConfig {
   preemptiveTts?: boolean;
 }
 
+/**
+ * TTS voice selection + delivery parameters (ElevenLabs semantics; ranges in
+ * comments). Travels inside tts.options — kept as a named type so the
+ * frontend preset store and the agent agree on the shape.
+ */
+export interface VoiceConfig {
+  voiceId: string;
+  /** 0–1: lower = more expressive/variable, higher = more monotone-consistent */
+  stability?: number;
+  /** 0–1: adherence to the original voice timbre */
+  similarityBoost?: number;
+  /** 0–1: style exaggeration; >0 costs extra latency */
+  style?: number;
+  /** 0.8–1.2: speaking rate */
+  speed?: number;
+}
+
 export interface PipelineConfig {
   stt: ProviderConfig;
   llm: ProviderConfig;

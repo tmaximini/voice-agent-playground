@@ -1,7 +1,14 @@
-import type { BYOKKeys, TurnDetectionConfig } from "@voice-playground/shared";
-import { DEFAULT_PIPELINE, REQUIRED_KEYS } from "../data/providers";
+import type { BYOKKeys, TurnDetectionConfig, VoiceConfig } from "@voice-playground/shared";
+import { DEFAULT_PIPELINE, REQUIRED_KEYS, VOICES } from "../data/providers";
+import type { AssistantPreset } from "../lib/presetStore";
 
 interface Props {
+  presets: AssistantPreset[];
+  activePresetId: string;
+  onSelectPreset: (id: string) => void;
+  onNewPreset: () => void;
+  onDuplicatePreset: () => void;
+  onDeletePreset: () => void;
   keys: BYOKKeys;
   onKeyChange: (id: string, value: string) => void;
   rememberKeys: boolean;
@@ -9,15 +16,25 @@ interface Props {
   systemPrompt: string;
   language: string;
   turnDetection: TurnDetectionConfig;
+  voice: VoiceConfig;
   onOpenSettings: () => void;
   onSave: () => void;
   disabled: boolean;
 }
 
+const presetBtnCls =
+  "rounded-md bg-neutral-800/60 border border-neutral-700 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-200 hover:border-neutral-600 disabled:opacity-40 disabled:hover:text-neutral-400";
+
 // Phase 1: providers/models are fixed (shown read-only). Only the BYOK keys are
 // edited here; the system prompt + turn detection live in the Settings modal.
 // Phase 2 turns the read-only rows into dropdowns.
 export default function ConfigPanel({
+  presets,
+  activePresetId,
+  onSelectPreset,
+  onNewPreset,
+  onDuplicatePreset,
+  onDeletePreset,
   keys,
   onKeyChange,
   rememberKeys,
@@ -25,15 +42,17 @@ export default function ConfigPanel({
   systemPrompt,
   language,
   turnDetection,
+  voice,
   onOpenSettings,
   onSave,
   disabled,
 }: Props) {
   const td = turnDetection;
+  const voiceLabel = VOICES.find((v) => v.id === voice.voiceId)?.label ?? "custom";
   const rows: { stage: string; value: string }[] = [
     { stage: "STT", value: `${DEFAULT_PIPELINE.stt.provider} · ${DEFAULT_PIPELINE.stt.model} · ${language}` },
     { stage: "LLM", value: `${DEFAULT_PIPELINE.llm.provider} · ${DEFAULT_PIPELINE.llm.model}` },
-    { stage: "TTS", value: `${DEFAULT_PIPELINE.tts.provider} · ${DEFAULT_PIPELINE.tts.model}` },
+    { stage: "TTS", value: `${DEFAULT_PIPELINE.tts.provider} · ${DEFAULT_PIPELINE.tts.model} · ${voiceLabel}` },
     {
       stage: "Turn",
       value: `${td.model ?? "multilingual"} · ${td.minDelay ?? 0.4}–${td.maxDelay ?? 3.0}s${
@@ -44,6 +63,45 @@ export default function ConfigPanel({
 
   return (
     <section className="rounded-xl bg-neutral-900/60 border border-neutral-800 p-4 space-y-4">
+      <div className="space-y-2">
+        <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-neutral-400">
+          Assistant
+        </h2>
+        <select
+          disabled={disabled}
+          value={activePresetId}
+          onChange={(e) => onSelectPreset(e.target.value)}
+          className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500/50 disabled:opacity-50"
+        >
+          {presets.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-1.5">
+          <button type="button" disabled={disabled} onClick={onNewPreset} className={presetBtnCls}>
+            New
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onDuplicatePreset}
+            className={presetBtnCls}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onDeletePreset}
+            className={`${presetBtnCls} ml-auto hover:text-red-400 hover:border-red-500/40`}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
       <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-neutral-400">
         Pipeline
       </h2>

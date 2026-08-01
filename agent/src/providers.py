@@ -50,9 +50,25 @@ def build_llm(cfg: ProviderCfg, keys: dict):
 
 def build_tts(cfg: ProviderCfg, keys: dict):
     if cfg.provider == "elevenlabs":
+        kwargs = {}
+        vs = cfg.options.get("voiceSettings") or {}
+        if vs:
+            # stability/similarity_boost are required by the dataclass; the
+            # optional fields stay NOT_GIVEN unless the browser sent them.
+            optional = {
+                k: vs[src]
+                for k, src in (("style", "style"), ("speed", "speed"))
+                if vs.get(src) is not None
+            }
+            kwargs["voice_settings"] = elevenlabs.VoiceSettings(
+                stability=float(vs.get("stability", 0.5)),
+                similarity_boost=float(vs.get("similarityBoost", 0.75)),
+                **optional,
+            )
         return elevenlabs.TTS(
             model=cfg.model,
             voice_id=cfg.options.get("voiceId", "21m00Tcm4TlvDq8ikWAM"),
             api_key=keys["elevenlabs"],
+            **kwargs,
         )
     raise ValueError(f"unsupported TTS provider: {cfg.provider}")
