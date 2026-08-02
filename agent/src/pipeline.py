@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 
 from livekit.agents import Agent, AgentSession, JobContext
+from livekit.agents.voice.room_io import AudioInputOptions, RoomOptions
 from livekit.plugins.turn_detector.english import EnglishModel
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -70,9 +72,25 @@ async def run_pipeline(ctx: JobContext, init: SessionInit, vad) -> None:
         tts_provider=config.tts.provider,
     )
 
+    # Krisp BVC filters the agent's own voice (speaker echo) out of the mic
+    # feed server-side — far stronger than browser AEC. Licensed for LiveKit
+    # Cloud only, so gate on the URL: self-hosted/local keeps plain input.
+    start_kwargs = {}
+    if ".livekit.cloud" in os.environ.get("LIVEKIT_URL", ""):
+        try:
+            from livekit.plugins import noise_cancellation
+
+            start_kwargs["room_options"] = RoomOptions(
+                audio_input=AudioInputOptions(noise_cancellation=noise_cancellation.BVC())
+            )
+            logger.info("Krisp BVC noise cancellation enabled (LiveKit Cloud)")
+        except ImportError:
+            logger.warning("livekit-plugins-noise-cancellation not installed; BVC disabled")
+
     await session.start(
         agent=Agent(instructions=config.system_prompt or DEFAULT_SYSTEM_PROMPT),
         room=ctx.room,
+        **start_kwargs,
     )
 
     # A fixed greeting so the user knows the agent is live. say() goes straight

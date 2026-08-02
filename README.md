@@ -129,12 +129,20 @@ so no edits are needed. Dev creds live in `infra/livekit.yaml`.
 
 ### B. LiveKit Cloud + local agent
 
+One-time: create a [LiveKit Cloud](https://cloud.livekit.io) project and set up
+the agent venv:
+
 ```bash
-# set wrangler.toml LIVEKIT_URL to your wss://<project>.livekit.cloud
-cd agent && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && python src/main.py download-files
-LIVEKIT_URL=wss://<project>.livekit.cloud LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... \
-  python src/main.py dev        # wait for "registered worker"
+cp .env.cloud.example .env.cloud          # fill in LIVEKIT_URL / KEY / SECRET
+cd agent && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt \
+  && .venv/bin/python src/main.py download-files && cd ..
+```
+
+Then everything starts with one command (agent + worker + frontend, Ctrl-C
+stops all three):
+
+```bash
+pnpm dev:cloud
 ```
 
 ### Common host steps (both A and B)
@@ -157,6 +165,30 @@ Open http://localhost:5173, paste your three API keys, click **Start**, grant mi
 access, and speak. The six headline latency numbers update per turn, the
 transcript streams live as you talk, and **Prompt & turn detection → Edit**
 opens the tuning panel.
+
+## EU data residency
+
+Every provider hop is configurable, so an all-EU pipeline is a config choice,
+not a fork. The pieces:
+
+| Hop | EU option | How |
+|-----|-----------|-----|
+| Media / SFU | LiveKit Cloud EU region, or self-host `livekit-server` on an EU VM (Hetzner etc. — this repo's Docker setup runs anywhere) | pick region at project creation / deploy `infra/` |
+| Agent worker | any EU datacenter VM | `agent/` Docker image |
+| STT | Deepgram EU endpoint (plan-dependent — verify with Deepgram) | `stt.options.baseUrl: "https://api.eu.deepgram.com/v1/listen"` |
+| LLM | Nebius AI Studio (EU datacenters, OpenAI-compatible), Azure OpenAI in an EU region (swedencentral, francecentral), or any EU OpenAI-compatible endpoint | providers `nebius` / `azure` (built in), or `llm.options.baseUrl` |
+| TTS | ElevenLabs EU residency (enterprise tier), or add an EU-residency TTS provider (Inworld, Azure EU) as a new branch | `tts.options.baseUrl`, or one branch in `agent/src/providers.py` |
+
+Provider config shapes: `nebius` takes a model id (`llm: { provider: "nebius",
+model: "..." }`, key id `nebius`); `azure` additionally needs
+`options.endpoint` (`https://<resource>.openai.azure.com`), optional
+`options.deployment` (defaults to the model name) and `options.apiVersion`,
+key id `azure`.
+
+Caveats worth knowing before you promise residency to anyone: OpenRouter routes
+to wherever the underlying model hosts run — use a direct EU endpoint (Nebius,
+Azure EU) instead when residency matters. And "EU endpoint" claims vary by
+provider plan; confirm in writing what region actually processes audio/text.
 
 ## Troubleshooting
 
