@@ -25,6 +25,17 @@ if [ ! -x agent/.venv/bin/python ]; then
   exit 1
 fi
 
+# A stale worker on 8787 (e.g. from a local-stack `pnpm dev`) would silently
+# hand the frontend LOCAL LiveKit tokens and the whole "cloud" session would
+# run against Docker. Refuse to start rather than test the wrong backend.
+for port in 8787 5173; do
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "Port $port is already in use — another dev stack is running."
+    echo "Stop it first (check: lsof -nP -iTCP:$port -sTCP:LISTEN), then re-run pnpm dev:cloud."
+    exit 1
+  fi
+done
+
 # Kill the whole process group on exit so no stray dev servers linger.
 trap 'kill 0' EXIT INT TERM
 
