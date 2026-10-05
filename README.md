@@ -69,10 +69,11 @@ Silero VAD, and makes every knob a Settings field:
 | Endpointing | `fixed` | `dynamic` adapts the wait to the speaker's pause rhythm |
 | Min delay | `0.4s` | Silence needed to commit a turn the model considers finished |
 | Max delay | `3.0s` | Cap on the wait when the model thinks you're mid-sentence |
+| VAD silence | `0.3s` | Silero end-of-speech silence; the EOU check starts only after it, so it floors min delay |
 | Unlikely threshold | per-language | Below this end-of-turn probability the agent keeps waiting |
 | Preemptive TTS | on | Synthesize speculatively during the endpointing wait (retracted turns still bill TTS characters) |
 
-How a turn commits: VAD detects silence → Deepgram finalizes the transcript
+How a turn commits: VAD detects **VAD silence** of quiet → Deepgram finalizes the transcript
 fast (`endpointing_ms=25`) → the EOU model scores whether the utterance *sounds*
 complete → confident turns commit after **min delay** of silence, doubtful ones
 get up to **max delay** to continue. The LLM starts speculatively before the
