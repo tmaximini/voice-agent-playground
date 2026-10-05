@@ -29,6 +29,10 @@ class TurnDetectionCfg:
     mode: str = "fixed"  # "fixed" | "dynamic"
     unlikely_threshold: float | None = None
     preemptive_tts: bool = True
+    # Silero's end-of-speech silence. EOU detection only starts once VAD
+    # reports end-of-speech, so this is the floor under min_delay (Silero's
+    # own default of 0.55s silently overrode a 0.4s min_delay).
+    vad_min_silence: float = 0.3
 
 
 @dataclass
@@ -67,6 +71,7 @@ def _turn_detection_cfg(raw: dict | None) -> TurnDetectionCfg:
             float(raw["unlikelyThreshold"]) if raw.get("unlikelyThreshold") is not None else None
         ),
         preemptive_tts=bool(raw.get("preemptiveTts", defaults.preemptive_tts)),
+        vad_min_silence=float(raw.get("vadMinSilence", defaults.vad_min_silence)),
     )
 
 
@@ -84,7 +89,7 @@ def parse_session_init(raw: bytes | str) -> SessionInit:
 
     # Log the (safe) config only — NEVER the keys.
     logger.info(
-        "session init: stt=%s/%s llm=%s/%s tts=%s/%s turn=%s/%s %.2f-%.2fs (keys for: %s)",
+        "session init: stt=%s/%s llm=%s/%s tts=%s/%s turn=%s/%s %.2f-%.2fs vad=%.2fs (keys for: %s)",
         config.stt.provider,
         config.stt.model,
         config.llm.provider,
@@ -95,6 +100,7 @@ def parse_session_init(raw: bytes | str) -> SessionInit:
         config.turn_detection.mode,
         config.turn_detection.min_delay,
         config.turn_detection.max_delay,
+        config.turn_detection.vad_min_silence,
         ",".join(sorted(keys.keys())),  # key NAMES only, never values
     )
     return SessionInit(config=config, keys=keys)

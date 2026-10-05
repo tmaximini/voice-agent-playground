@@ -86,7 +86,10 @@ export const LANGUAGES: { id: string; label: string }[] = [
  * when a turn is retracted).
  */
 export const DEFAULT_TURN_DETECTION: Required<
-  Pick<TurnDetectionConfig, "model" | "minDelay" | "maxDelay" | "mode" | "preemptiveTts">
+  Pick<
+    TurnDetectionConfig,
+    "model" | "minDelay" | "maxDelay" | "mode" | "preemptiveTts" | "vadMinSilence"
+  >
 > &
   TurnDetectionConfig = {
   model: "multilingual",
@@ -94,6 +97,7 @@ export const DEFAULT_TURN_DETECTION: Required<
   maxDelay: 3.0,
   mode: "fixed",
   preemptiveTts: true,
+  vadMinSilence: 0.3,
 };
 
 /** The single hardcoded pipeline for Phase 1. */

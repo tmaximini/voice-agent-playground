@@ -255,6 +255,19 @@ export default function SettingsModal({
                 className={inputCls}
               />
             </label>
+
+            <label className="block space-y-1">
+              <span className={labelCls}>VAD silence (s)</span>
+              <input
+                type="number"
+                step="0.05"
+                min="0.1"
+                disabled={disabled}
+                value={td.vadMinSilence ?? 0.3}
+                onChange={(e) => set({ vadMinSilence: Number(e.target.value) })}
+                className={inputCls}
+              />
+            </label>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -273,7 +286,8 @@ export default function SettingsModal({
           <p className="text-[11px] text-neutral-500">
             The semantic model decides if you sound finished: confident end-of-turn commits
             after the min delay of silence; unfinished-sounding speech waits up to the max.
-            Lower min delay = snappier but more likely to talk over slow speakers.
+            Lower min delay = snappier but more likely to talk over slow speakers. The check
+            only starts after VAD silence, so the effective floor is the larger of the two.
           </p>
         </div>
 

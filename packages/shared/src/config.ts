@@ -34,6 +34,11 @@ export interface TurnDetectionConfig {
   unlikelyThreshold?: number;
   /** synthesize speech speculatively before the turn commits (costs TTS chars on retractions) */
   preemptiveTts?: boolean;
+  /**
+   * VAD end-of-speech silence (s). EOU detection starts only after this, so
+   * it is the floor under minDelay. Lower = snappier, more mid-pause checks.
+   */
+  vadMinSilence?: number;
 }
 
 /**
