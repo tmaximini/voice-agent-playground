@@ -3,7 +3,7 @@ import type { BYOKKeys, SessionInit, TurnDetectionConfig, VoiceConfig } from "@v
 import { DEFAULT_PIPELINE, REQUIRED_KEYS } from "./data/providers";
 import { startSession, type VoiceSession } from "./lib/livekit";
 import { loadJSON, remove, saveJSON } from "./lib/persist";
-import { metricsStore } from "./lib/metricsStore";
+import { metricsStore, useTurns } from "./lib/metricsStore";
 import { sessionHistory } from "./lib/sessionHistory";
 import { estimateCost } from "./lib/cost";
 import { presetStore, useActivePresetId, usePresets } from "./lib/presetStore";
@@ -11,28 +11,29 @@ import ConfigPanel from "./components/ConfigPanel";
 import CallControls, { type CallState } from "./components/CallControls";
 import CostPanel from "./components/CostPanel";
 import HistoryPanel from "./components/HistoryPanel";
-import MetricsCards from "./components/MetricsCards";
+import TurnPanel from "./components/TurnPanel";
 import TranscriptLog from "./components/TranscriptLog";
 import SettingsModal from "./components/SettingsModal";
 import Toaster from "./components/Toaster";
 import { toast } from "./lib/toast";
 
-// Waveform mark: five bars that idle flat and breathe while the call is live.
+// Mark: one bar per pipeline stage, in stage colors. Idle flat, breathing live.
 function LogoMark({ live }: { live: boolean }) {
-  const heights = [10, 18, 26, 16, 8];
+  const bars = [
+    { h: 12, c: "bg-stage-eou" },
+    { h: 22, c: "bg-stage-stt" },
+    { h: 16, c: "bg-stage-llm" },
+    { h: 9, c: "bg-stage-tts" },
+  ];
   return (
     <div
       aria-hidden
-      className={`flex h-9 w-9 items-center justify-center gap-[3px] rounded-lg bg-emerald-500/10 border border-emerald-500/30 ${
+      className={`flex h-9 w-9 items-center justify-center gap-[3px] rounded-[10px] border border-line bg-panel ${
         live ? "logo-live" : ""
       }`}
     >
-      {heights.map((h, i) => (
-        <span
-          key={i}
-          className="logo-bar w-[3px] rounded-full bg-emerald-400"
-          style={{ height: h }}
-        />
+      {bars.map((b, i) => (
+        <span key={i} className={`logo-bar w-[3px] rounded-full ${b.c}`} style={{ height: b.h }} />
       ))}
     </div>
   );
@@ -59,6 +60,12 @@ export default function App() {
   const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState<string>();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
+  // Turn shown in the turn panel; undefined follows the newest turn.
+  const [selectedTurnId, setSelectedTurnId] = useState<string>();
+  const turns = useTurns();
+  const selectedIdx = selectedTurnId ? turns.findIndex((t) => t.turnId === selectedTurnId) : -1;
+  const shownIdx = selectedIdx >= 0 ? selectedIdx : 0;
   const sessionRef = useRef<VoiceSession | null>(null);
   const startedAtRef = useRef(0);
   const savedRef = useRef(false);
@@ -103,7 +110,7 @@ export default function App() {
     saveJSON("rememberKeys", rememberKeys);
     if (rememberKeys) saveJSON("keys", keys);
     else remove("keys");
-    toast(rememberKeys ? "Saved — keys stored on this device" : "Saved");
+    toast(rememberKeys ? "Assistant saved. Keys stored on this device." : "Assistant saved");
   }, [activePresetId, presetName, systemPrompt, language, turnDetection, voice, rememberKeys, keys]);
 
   // Load a preset into the working copy (discards unsaved edits).
@@ -148,6 +155,8 @@ export default function App() {
     setError(undefined);
     setState("connecting");
     startedAtRef.current = Date.now();
+    setStartedAt(startedAtRef.current);
+    setSelectedTurnId(undefined);
     savedRef.current = false;
     try {
       const init: SessionInit = {
@@ -198,19 +207,19 @@ export default function App() {
   const disabled = state === "live" || state === "connecting";
 
   return (
-    <div className="min-h-screen mx-auto max-w-5xl px-4 py-8 space-y-6">
-      <header className="flex items-center gap-4">
+    <div className="mx-auto min-h-screen max-w-6xl px-4 pb-16 pt-6 sm:px-6">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-6">
         <LogoMark live={state === "live"} />
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-semibold tracking-tight">AI Voice Playground</h1>
-          <p className="text-sm text-neutral-400">
-            Bring your own keys. Hold a spoken conversation. Watch per-turn latency live.
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Voice Playground</h1>
+          <p className="text-[13px] text-muted">
+            Talk to a voice agent with your own keys and see where every millisecond goes.
           </p>
         </div>
       </header>
 
-      <div className="grid md:grid-cols-[320px_1fr] gap-6 items-start">
-        <div className="space-y-6">
+      <div className="grid items-start gap-5 md:grid-cols-[300px_1fr]">
+        <aside>
           <ConfigPanel
             presets={presets}
             activePresetId={activePresetId}
@@ -230,21 +239,32 @@ export default function App() {
             onSave={onSave}
             disabled={disabled}
           />
-        </div>
+        </aside>
 
-        <div className="space-y-6">
+        <main className="min-w-0 space-y-5">
           <CallControls
             state={state}
             error={error}
             canStart={canStart}
+            assistantName={presetName.trim() || "your assistant"}
+            startedAt={startedAt}
             onStart={onStart}
             onStop={onStop}
           />
-          <MetricsCards />
-          <TranscriptLog />
+          <TurnPanel
+            turn={turns[shownIdx]}
+            index={turns.length - shownIdx}
+            total={turns.length}
+            onShowLatest={() => setSelectedTurnId(undefined)}
+          />
+          <TranscriptLog
+            turns={turns}
+            selectedId={turns[shownIdx]?.turnId}
+            onSelect={(id) => setSelectedTurnId(id === turns[0]?.turnId ? undefined : id)}
+          />
           <CostPanel />
           <HistoryPanel />
-        </div>
+        </main>
       </div>
 
       <SettingsModal

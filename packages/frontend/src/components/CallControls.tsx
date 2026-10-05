@@ -1,68 +1,101 @@
+import { useEffect, useState } from "react";
+import { dangerBtnCls, panelCls, primaryBtnCls } from "../lib/ui";
+
 export type CallState = "idle" | "connecting" | "live" | "error";
 
 interface Props {
   state: CallState;
   error?: string;
   canStart: boolean;
+  assistantName: string;
+  startedAt: number;
   onStart: () => void;
   onStop: () => void;
 }
 
-const LABELS: Record<CallState, string> = {
-  idle: "idle",
-  connecting: "connecting…",
-  live: "live",
-  error: "error",
-};
-
 const DOT: Record<CallState, string> = {
-  idle: "bg-neutral-500",
-  connecting: "bg-amber-400 animate-pulse",
-  live: "bg-emerald-400",
-  error: "bg-red-500",
+  idle: "bg-faint",
+  connecting: "bg-warn animate-pulse",
+  live: "bg-good",
+  error: "bg-bad",
 };
 
-const TEXT: Record<CallState, string> = {
-  idle: "text-neutral-400",
-  connecting: "text-amber-300",
-  live: "text-emerald-300",
-  error: "text-red-400",
-};
+function fmtElapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
-export default function CallControls({ state, error, canStart, onStart, onStop }: Props) {
-  const live = state === "live" || state === "connecting";
+function useElapsed(running: boolean, since: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+  return now - since;
+}
+
+export default function CallControls({
+  state,
+  error,
+  canStart,
+  assistantName,
+  startedAt,
+  onStart,
+  onStop,
+}: Props) {
+  const active = state === "live" || state === "connecting";
+  const elapsed = useElapsed(state === "live", startedAt);
+
+  const status =
+    state === "live"
+      ? `On a call with ${assistantName}`
+      : state === "connecting"
+        ? "Connecting…"
+        : state === "error"
+          ? "Couldn't start the call"
+          : canStart
+            ? `Ready to call ${assistantName}`
+            : "Add your three API keys to start a call";
+
   return (
-    <section className="rounded-xl bg-neutral-900/60 border border-neutral-800 p-4 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2.5 text-sm">
-        <span className="relative flex h-2.5 w-2.5">
+    <section className={`${panelCls} flex items-center justify-between gap-4 px-5 py-4`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
           {state === "live" && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-50" />
           )}
           <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${DOT[state]}`} />
         </span>
-        <span className={`font-mono text-xs uppercase tracking-widest ${TEXT[state]}`}>
-          {LABELS[state]}
-        </span>
-        {error && <span className="text-red-400 text-xs">— {error}</span>}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{status}</p>
+          {state === "error" && error && <p className="truncate text-[13px] text-bad">{error}</p>}
+        </div>
+        {state === "live" && (
+          <span className="shrink-0 text-sm tabular-nums text-muted">{fmtElapsed(elapsed)}</span>
+        )}
       </div>
 
-      {live ? (
-        <button
-          onClick={onStop}
-          className="rounded-lg bg-red-500/10 border border-red-500/40 px-5 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 active:scale-[0.98]"
-        >
-          Stop
+      {active ? (
+        <button onClick={onStop} className={`${dangerBtnCls} shrink-0 whitespace-nowrap`}>
+          End call
         </button>
       ) : (
-        <button
-          onClick={onStart}
-          disabled={!canStart}
-          title={canStart ? undefined : "Enter your three API keys first"}
-          className="rounded-lg bg-emerald-500/10 border border-emerald-500/40 px-5 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Start
+        <button onClick={onStart} disabled={!canStart} className={`${primaryBtnCls} shrink-0 whitespace-nowrap`}>
+          <MicIcon />
+          Start call
         </button>
       )}
     </section>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <rect x="5.5" y="1.75" width="5" height="8" rx="2.5" />
+      <path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2" />
+    </svg>
   );
 }

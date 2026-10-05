@@ -31,6 +31,14 @@ export interface MetricEvent {
   meta?: MetricEventMeta;
 }
 
+/** One stage's raw timing within a turn (epoch ms, agent clock). */
+export interface StageSpan {
+  start: number;
+  /** first token (LLM) / first audio byte (TTS) */
+  first?: number;
+  end: number;
+}
+
 /**
  * Derived per-turn view the dashboard assembles from MetricEvents. All the
  * headline numbers and cost derive from the single MetricEvent stream.
@@ -52,6 +60,8 @@ export interface TurnMetrics {
   /** speech end -> final transcript, inside the endpointing window */
   transcriptionMs?: number;
   estCostUsd?: number;
+  /** raw stage timings, for the waterfall (anchor: stages.eou.start = speech end) */
+  stages?: Partial<Record<"eou" | "stt" | "llm" | "tts", StageSpan>>;
   userText?: string;
   agentText?: string;
 }

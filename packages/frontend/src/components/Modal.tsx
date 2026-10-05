@@ -23,7 +23,7 @@ export default function Modal({ open, onClose, title, children }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-canvas/70 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
@@ -31,21 +31,21 @@ export default function Modal({ open, onClose, title, children }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-2xl rounded-2xl bg-neutral-900 border border-neutral-700 shadow-2xl"
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col rounded-2xl border border-line bg-panel shadow-2xl shadow-black/30"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
-          <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-neutral-300">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <h2 className="text-base font-medium">
             {title}
           </h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg px-2 py-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
+            className="-mr-2 rounded-lg px-2 py-1 text-muted hover:bg-raised hover:text-fg"
           >
             ✕
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import type { BYOKKeys, TurnDetectionConfig, VoiceConfig } from "@voice-playground/shared";
 import { DEFAULT_PIPELINE, REQUIRED_KEYS, VOICES } from "../data/providers";
 import type { AssistantPreset } from "../lib/presetStore";
+import { STAGES, type StageKey } from "../lib/stages";
+import { ghostBtnCls, headingCls, inputCls, labelCls, panelCls, secondaryBtnCls } from "../lib/ui";
 
 interface Props {
   presets: AssistantPreset[];
@@ -22,8 +24,13 @@ interface Props {
   disabled: boolean;
 }
 
-const presetBtnCls =
-  "rounded-md bg-neutral-800/60 border border-neutral-700 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-200 hover:border-neutral-600 disabled:opacity-40 disabled:hover:text-neutral-400";
+const PROVIDER_LABEL: Record<string, string> = {
+  deepgram: "Deepgram",
+  openrouter: "OpenRouter",
+  elevenlabs: "ElevenLabs",
+};
+
+const providerName = (id: string) => PROVIDER_LABEL[id] ?? id;
 
 // Phase 1: providers/models are fixed (shown read-only). Only the BYOK keys are
 // edited here; the system prompt + turn detection live in the Settings modal.
@@ -48,30 +55,49 @@ export default function ConfigPanel({
   disabled,
 }: Props) {
   const td = turnDetection;
-  const voiceLabel = VOICES.find((v) => v.id === voice.voiceId)?.label ?? "custom";
-  const rows: { stage: string; value: string }[] = [
-    { stage: "STT", value: `${DEFAULT_PIPELINE.stt.provider} · ${DEFAULT_PIPELINE.stt.model} · ${language}` },
-    { stage: "LLM", value: `${DEFAULT_PIPELINE.llm.provider} · ${DEFAULT_PIPELINE.llm.model}` },
-    { stage: "TTS", value: `${DEFAULT_PIPELINE.tts.provider} · ${DEFAULT_PIPELINE.tts.model} · ${voiceLabel}` },
+  const voiceLabel = VOICES.find((v) => v.id === voice.voiceId)?.label ?? "custom voice";
+  const { stt, llm, tts } = DEFAULT_PIPELINE;
+  const rows: { stage: StageKey; title: string; detail: string }[] = [
     {
-      stage: "Turn",
-      value: `${td.model ?? "multilingual"} · ${td.minDelay ?? 0.4}–${td.maxDelay ?? 3.0}s${
-        td.mode === "dynamic" ? " · dynamic" : ""
+      stage: "eou",
+      title: STAGES.eou.label,
+      detail: `${td.model === "english" ? "English" : "Multilingual"} model, ${td.minDelay ?? 0.4}–${td.maxDelay ?? 3.0}s${
+        td.mode === "dynamic" ? ", dynamic" : ""
       }`,
     },
+    { stage: "stt", title: providerName(stt.provider), detail: `${stt.model}, ${language}` },
+    { stage: "llm", title: providerName(llm.provider), detail: llm.model },
+    { stage: "tts", title: providerName(tts.provider), detail: `${tts.model}, ${voiceLabel}` },
   ];
 
   return (
-    <section className="rounded-xl bg-neutral-900/60 border border-neutral-800 p-4 space-y-4">
-      <div className="space-y-2">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-neutral-400">
-          Assistant
-        </h2>
+    <section className={`${panelCls} divide-y divide-line`}>
+      <div className="space-y-3 p-5">
+        <div className="flex items-center justify-between">
+          <h2 className={headingCls}>Assistant</h2>
+          <div className="-mr-2 flex">
+            <button type="button" disabled={disabled} onClick={onNewPreset} className={ghostBtnCls}>
+              New
+            </button>
+            <button type="button" disabled={disabled} onClick={onDuplicatePreset} className={ghostBtnCls}>
+              Duplicate
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onDeletePreset}
+              className={`${ghostBtnCls} hover:text-bad`}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
         <select
+          aria-label="Assistant"
           disabled={disabled}
           value={activePresetId}
           onChange={(e) => onSelectPreset(e.target.value)}
-          className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500/50 disabled:opacity-50"
+          className={inputCls}
         >
           {presets.map((p) => (
             <option key={p.id} value={p.id}>
@@ -79,104 +105,74 @@ export default function ConfigPanel({
             </option>
           ))}
         </select>
-        <div className="flex gap-1.5">
-          <button type="button" disabled={disabled} onClick={onNewPreset} className={presetBtnCls}>
-            New
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onDuplicatePreset}
-            className={presetBtnCls}
-          >
-            Duplicate
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onDeletePreset}
-            className={`${presetBtnCls} ml-auto hover:text-red-400 hover:border-red-500/40`}
-          >
-            Delete
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="group block w-full rounded-lg border border-line bg-canvas px-3 py-2.5 text-left transition-colors hover:border-faint"
+        >
+          <span className="flex items-center justify-between text-[13px] text-muted">
+            Prompt, voice and turn settings
+            <span className="text-fg opacity-60 transition-opacity group-hover:opacity-100">Edit</span>
+          </span>
+          <span className="mt-1 line-clamp-2 text-[13px] leading-snug text-fg/80">
+            {systemPrompt || "No system prompt yet."}
+          </span>
+        </button>
       </div>
 
-      <h2 className="font-mono text-xs font-medium uppercase tracking-widest text-neutral-400">
-        Pipeline
-      </h2>
-
-      <div className="space-y-2">
-        {rows.map((r) => (
-          <div
-            key={r.stage}
-            className="flex items-center justify-between gap-3 rounded-lg bg-neutral-800/40 px-3 py-2 text-sm"
-          >
-            <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
-              {r.stage}
-            </span>
-            <span className="truncate font-mono text-xs text-neutral-300">{r.value}</span>
-          </div>
-        ))}
+      <div className="space-y-3 p-5">
+        <h2 className={headingCls}>Pipeline</h2>
+        <ol className="space-y-2.5">
+          {rows.map((r) => (
+            <li key={r.stage} className="grid grid-cols-[10px_1fr] items-baseline gap-x-3">
+              <span aria-hidden className={`h-2.5 w-2.5 translate-y-0.5 rounded-sm ${STAGES[r.stage].bg}`} />
+              <span className="min-w-0">
+                <span className="block text-sm">{r.title}</span>
+                <span className="block truncate text-[13px] text-muted">{r.detail}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
 
-      <div className="space-y-3">
-        <h3 className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-          Your API keys (BYOK)
-        </h3>
+      <div className="space-y-3 p-5">
+        <h2 className={headingCls}>API keys</h2>
         {REQUIRED_KEYS.map((k) => (
-          <label key={k.id} className="block space-y-1">
-            <span className="text-xs text-neutral-400">{k.label}</span>
+          <label key={k.id} className="block space-y-1.5">
+            <span className={labelCls}>{providerName(k.id)}</span>
             <input
               type="password"
               autoComplete="off"
+              spellCheck={false}
               disabled={disabled}
               value={keys[k.id] ?? ""}
               onChange={(e) => onKeyChange(k.id, e.target.value)}
-              placeholder={`sk-... (${k.id})`}
-              className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-500/50 disabled:opacity-50"
+              placeholder={`Paste your ${providerName(k.id)} key`}
+              className={`${inputCls} font-mono text-[13px] placeholder:font-sans`}
             />
           </label>
         ))}
-        <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
+        <label className="flex cursor-pointer select-none items-center gap-2 pt-1">
           <input
             type="checkbox"
             checked={rememberKeys}
             onChange={(e) => onRememberKeysChange(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 accent-emerald-500"
+            className="h-4 w-4 rounded border-line accent-[rgb(var(--fg))]"
           />
-          <span className="text-xs text-neutral-300">Remember keys on this device</span>
+          <span className="text-[13px]">Remember keys on this device</span>
         </label>
-        <p className="text-[11px] leading-relaxed text-neutral-500">
+        <p className="text-xs leading-relaxed text-faint">
           {rememberKeys
-            ? "Saved in this browser's local storage on this device only. Never sent anywhere but your live session."
-            : "Sent only into your live session — not stored. Re-enter after a refresh."}
+            ? "Stored in this browser only. Keys go nowhere except your live session."
+            : "Keys go only into your live session and aren't stored. You'll re-enter them after a refresh."}
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={onOpenSettings}
-        className="w-full text-left rounded-lg bg-neutral-800/40 border border-neutral-700 px-3 py-2.5 transition-colors hover:bg-neutral-800/70"
-      >
-        <span className="flex items-center justify-between">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            Prompt &amp; turn detection
-          </span>
-          <span className="text-xs text-neutral-400">Edit</span>
-        </span>
-        <span className="mt-1 block text-xs text-neutral-400 line-clamp-2">
-          {systemPrompt || "No system prompt set."}
-        </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={onSave}
-        className="w-full rounded-lg bg-emerald-500/10 border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 active:scale-[0.99]"
-      >
-        Save
-      </button>
+      <div className="p-5">
+        <button type="button" onClick={onSave} className={`${secondaryBtnCls} w-full`}>
+          Save assistant
+        </button>
+      </div>
     </section>
   );
 }

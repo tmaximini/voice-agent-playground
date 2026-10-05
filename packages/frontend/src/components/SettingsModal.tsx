@@ -1,5 +1,6 @@
 import type { TurnDetectionConfig, VoiceConfig } from "@voice-playground/shared";
 import { LANGUAGES, VOICES } from "../data/providers";
+import { headingCls, inputCls, labelCls, primaryBtnCls, secondaryBtnCls } from "../lib/ui";
 import Modal from "./Modal";
 
 interface Props {
@@ -19,9 +20,6 @@ interface Props {
   disabled: boolean;
 }
 
-const inputCls =
-  "w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-2 text-sm outline-none focus:border-neutral-500 disabled:opacity-50";
-const labelCls = "text-xs text-neutral-400";
 
 // Roomy home for the system prompt and turn-detection tuning. Phase 2 can add
 // provider/model/voice selection and cost settings here.
@@ -56,10 +54,10 @@ export default function SettingsModal({
   ) => {
     const value = voice[key] ?? fallback;
     return (
-      <label className="block space-y-1">
+      <label className="block space-y-1.5">
         <span className={`${labelCls} flex justify-between`}>
           {label}
-          <span className="font-mono tabular-nums text-neutral-500">{value.toFixed(2)}</span>
+          <span className="tabular-nums text-faint">{value.toFixed(2)}</span>
         </span>
         <input
           type="range"
@@ -69,19 +67,17 @@ export default function SettingsModal({
           disabled={disabled}
           value={value}
           onChange={(e) => setVoice({ [key]: Number(e.target.value) })}
-          className="w-full accent-emerald-500"
+          className="w-full accent-[rgb(var(--fg))]"
         />
       </label>
     );
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Settings">
+    <Modal open={open} onClose={onClose} title="Assistant settings">
       <div className="space-y-5">
         <label className="block space-y-2">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            Assistant name
-          </span>
+          <span className={`${headingCls} block`}>Assistant name</span>
           <input
             type="text"
             autoFocus
@@ -94,26 +90,22 @@ export default function SettingsModal({
         </label>
 
         <label className="block space-y-2">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            System prompt
-          </span>
+          <span className={`${headingCls} block`}>System prompt</span>
           <textarea
             rows={6}
             disabled={disabled}
             value={systemPrompt}
             onChange={(e) => onSystemPromptChange(e.target.value)}
             placeholder="Instructions that shape how the agent speaks and behaves…"
-            className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-3 py-3 text-sm leading-relaxed outline-none focus:border-neutral-500 disabled:opacity-50 resize-y"
+            className={`${inputCls} resize-y py-3 leading-relaxed`}
           />
         </label>
 
         <div className="space-y-3">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            Voice (ElevenLabs)
-          </span>
+          <h3 className={headingCls}>Voice (ElevenLabs)</h3>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5">
               <span className={labelCls}>Voice</span>
               <select
                 disabled={disabled}
@@ -132,8 +124,8 @@ export default function SettingsModal({
               </select>
             </label>
 
-            <label className="block space-y-1">
-              <span className={labelCls}>Voice ID (any from your library)</span>
+            <label className="block space-y-1.5">
+              <span className={labelCls}>Voice ID</span>
               <input
                 type="text"
                 disabled={disabled}
@@ -144,26 +136,24 @@ export default function SettingsModal({
               />
             </label>
 
-            {slider("Stability (lower = expressive)", "stability", 0, 1, 0.5)}
+            {slider("Stability", "stability", 0, 1, 0.5)}
             {slider("Similarity", "similarityBoost", 0, 1, 0.75)}
             {slider("Style exaggeration", "style", 0, 1, 0)}
             {slider("Speed", "speed", 0.8, 1.2, 1.0)}
           </div>
 
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-xs leading-relaxed text-faint">
             Lower stability sounds livelier but less consistent; style &gt; 0 adds latency.
             Deep male tones: Adam or Josh. Soft female: Sarah or Rachel.
           </p>
         </div>
 
         <div className="space-y-3">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-            Turn detection
-          </span>
+          <h3 className={headingCls}>Turn detection</h3>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block space-y-1">
-              <span className={labelCls}>Language (STT)</span>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className={labelCls}>Language</span>
               <select
                 disabled={disabled}
                 value={language}
@@ -182,8 +172,8 @@ export default function SettingsModal({
               </select>
             </label>
 
-            <label className="block space-y-1">
-              <span className={labelCls}>EOU model</span>
+            <label className="block space-y-1.5">
+              <span className={labelCls}>Turn model</span>
               <select
                 disabled={disabled}
                 value={td.model ?? "multilingual"}
@@ -197,7 +187,7 @@ export default function SettingsModal({
               </select>
             </label>
 
-            <label className="block space-y-1">
+            <label className="block space-y-1.5">
               <span className={labelCls}>Endpointing</span>
               <select
                 disabled={disabled}
@@ -210,8 +200,8 @@ export default function SettingsModal({
               </select>
             </label>
 
-            <label className="block space-y-1">
-              <span className={labelCls}>EOU unlikely threshold</span>
+            <label className="block space-y-1.5">
+              <span className={labelCls}>Unlikely threshold</span>
               <input
                 type="number"
                 step="0.05"
@@ -230,7 +220,7 @@ export default function SettingsModal({
               />
             </label>
 
-            <label className="block space-y-1">
+            <label className="block space-y-1.5">
               <span className={labelCls}>Min delay (s)</span>
               <input
                 type="number"
@@ -243,7 +233,7 @@ export default function SettingsModal({
               />
             </label>
 
-            <label className="block space-y-1">
+            <label className="block space-y-1.5">
               <span className={labelCls}>Max delay (s)</span>
               <input
                 type="number"
@@ -256,7 +246,7 @@ export default function SettingsModal({
               />
             </label>
 
-            <label className="block space-y-1">
+            <label className="block space-y-1.5">
               <span className={labelCls}>VAD silence (s)</span>
               <input
                 type="number"
@@ -276,14 +266,14 @@ export default function SettingsModal({
               disabled={disabled}
               checked={td.preemptiveTts ?? true}
               onChange={(e) => set({ preemptiveTts: e.target.checked })}
-              className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 accent-emerald-500"
+              className="h-4 w-4 rounded border-line accent-[rgb(var(--fg))]"
             />
-            <span className="text-xs text-neutral-300">
+            <span className="text-[13px]">
               Preemptive TTS — lowest latency, but retracted turns still bill TTS characters
             </span>
           </label>
 
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-xs leading-relaxed text-faint">
             The semantic model decides if you sound finished: confident end-of-turn commits
             after the min delay of silence; unfinished-sounding speech waits up to the max.
             Lower min delay = snappier but more likely to talk over slow speakers. The check
@@ -291,15 +281,15 @@ export default function SettingsModal({
           </p>
         </div>
 
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-xs leading-relaxed text-faint">
           {disabled
-            ? "Stop the call to edit — settings are applied when a call starts."
-            : "Applied when you start a call."}
+            ? "End the call to edit. Changes apply to the next call."
+            : "Changes apply to the next call."}
         </p>
         <div className="flex justify-end gap-2 pt-1">
           <button
             onClick={onClose}
-            className="rounded-lg bg-neutral-100/5 border border-neutral-700 px-4 py-2 text-sm text-neutral-200 hover:bg-neutral-100/10"
+            className={secondaryBtnCls}
           >
             Cancel
           </button>
@@ -308,9 +298,9 @@ export default function SettingsModal({
               onSave();
               onClose();
             }}
-            className="rounded-lg bg-emerald-500/10 border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20"
+            className={primaryBtnCls}
           >
-            Save
+            Save assistant
           </button>
         </div>
       </div>

@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { TurnMetrics } from "@voice-playground/shared";
 import { sessionHistory, useSessions, type StoredSession } from "../lib/sessionHistory";
 import { fmtUsd } from "../lib/cost";
+import { GRADE, gradeE2e } from "../lib/stages";
+import { fmtMs, ghostBtnCls, headingCls, panelCls } from "../lib/ui";
+import { Line, TurnFooter } from "./TranscriptLog";
 
 function fmtWhen(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
@@ -18,8 +21,7 @@ function fmtDuration(ms: number): string {
 }
 
 function title(s: StoredSession): string {
-  const first = s.turns.find((t) => t.userText)?.userText;
-  return first ? (first.length > 64 ? `${first.slice(0, 64)}…` : first) : "Session";
+  return s.turns.find((t) => t.userText)?.userText ?? "Untitled session";
 }
 
 function avgE2e(turns: TurnMetrics[]): number | undefined {
@@ -28,45 +30,26 @@ function avgE2e(turns: TurnMetrics[]): number | undefined {
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-function Transcript({ s }: { s: StoredSession }) {
+function Detail({ s }: { s: StoredSession }) {
   return (
-    <div className="space-y-3 border-t border-neutral-800/70 pt-3">
+    <div className="space-y-4 border-t border-line px-3 pb-3 pt-4">
       {s.turns.map((t) => (
-        <div key={t.turnId} className="space-y-1">
-          {t.userText && (
-            <p className="flex items-baseline gap-2 text-sm">
-              <span className="inline-block w-14 shrink-0 font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-                you
-              </span>
-              <span className="text-neutral-300">{t.userText}</span>
-            </p>
-          )}
-          {t.agentText && (
-            <p className="flex items-baseline gap-2 text-sm">
-              <span className="inline-block w-14 shrink-0 font-mono text-[10px] font-medium uppercase tracking-widest text-emerald-500">
-                agent
-              </span>
-              <span className="text-neutral-300">{t.agentText}</span>
-            </p>
-          )}
-          {t.e2eMs != null && (
-            <p className="pl-16 font-mono text-[10px] tracking-wide text-neutral-600 tabular-nums">
-              e2e {Math.round(t.e2eMs)}ms
-            </p>
-          )}
+        <div key={t.turnId} className="space-y-1.5">
+          {t.userText && <Line role="user">{t.userText}</Line>}
+          {t.agentText && <Line role="agent">{t.agentText}</Line>}
+          <TurnFooter turn={t} />
         </div>
       ))}
-      <div className="flex items-center justify-between pt-1">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">
-          {s.config.preset ? `${s.config.preset} · ` : ""}
-          {s.config.llmModel} · {s.config.sttProvider} · {s.config.ttsProvider} · lang{" "}
-          {s.config.language}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-faint">
+        <span>
+          {s.config.preset && <>{s.config.preset}, </>}
+          {s.config.llmModel}, language {s.config.language}
         </span>
         <button
           onClick={() => sessionHistory.remove(s.id)}
-          className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 hover:text-red-400 transition-colors"
+          className={`${ghostBtnCls} hover:text-bad`}
         >
-          delete
+          Delete session
         </button>
       </div>
     </div>
@@ -82,53 +65,48 @@ export default function HistoryPanel() {
   if (sessions.length === 0) return null;
 
   return (
-    <section className="rounded-xl bg-neutral-900/60 border border-neutral-800 p-4 space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-          Past sessions
-        </h2>
-        <button
-          onClick={() => sessionHistory.clear()}
-          className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 hover:text-red-400 transition-colors"
-        >
-          clear all
+    <section className={panelCls}>
+      <div className="flex items-center justify-between border-b border-line px-5 py-2.5">
+        <h2 className={headingCls}>Past sessions</h2>
+        <button onClick={() => sessionHistory.clear()} className={`${ghostBtnCls} hover:text-bad`}>
+          Clear all
         </button>
       </div>
-      <div className="space-y-2">
+      <ul className="space-y-1 p-2">
         {sessions.map((s) => {
           const open = openId === s.id;
           const avg = avgE2e(s.turns);
+          const grade = gradeE2e(avg);
           return (
-            <div
+            <li
               key={s.id}
-              className={`rounded-lg border p-3 space-y-3 transition-colors ${
-                open
-                  ? "bg-emerald-500/[0.04] border-emerald-500/20"
-                  : "bg-neutral-900/40 border-neutral-800/70 hover:border-neutral-700"
+              className={`rounded-lg border transition-colors ${
+                open ? "border-line bg-raised/50" : "border-transparent hover:bg-raised/60"
               }`}
             >
               <button
                 onClick={() => setOpenId(open ? null : s.id)}
-                className="block w-full text-left space-y-1"
+                aria-expanded={open}
+                className="grid w-full grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 px-3 py-3 text-left"
               >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="truncate text-sm text-neutral-200">{title(s)}</span>
-                  <span className="shrink-0 font-mono text-[10px] text-neutral-500 tabular-nums">
-                    {fmtWhen(s.startedAt)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-3 font-mono text-[10px] tracking-wide text-neutral-500 tabular-nums">
+                <span className="truncate text-sm">{title(s)}</span>
+                <span className="text-xs tabular-nums text-faint">{fmtWhen(s.startedAt)}</span>
+                <span className="flex flex-wrap gap-x-4 text-xs tabular-nums text-muted">
+                  <span>{s.turns.length} {s.turns.length === 1 ? "turn" : "turns"}</span>
                   <span>{fmtDuration(s.durationMs)}</span>
-                  <span>{s.turns.length} turns</span>
-                  {avg != null && <span>avg e2e {Math.round(avg)}ms</span>}
+                  {avg != null && (
+                    <span>
+                      avg <span className={grade ? GRADE[grade].text : ""}>{fmtMs(avg)} ms</span>
+                    </span>
+                  )}
                   <span>{fmtUsd(s.costUsd)}</span>
-                </div>
+                </span>
               </button>
-              {open && <Transcript s={s} />}
-            </div>
+              {open && <Detail s={s} />}
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
