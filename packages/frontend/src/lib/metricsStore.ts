@@ -47,6 +47,12 @@ class MetricsStore {
     }
 
     const t = this.get(ev.turnId);
+    if (ev.stage !== "e2e") {
+      t.stages = {
+        ...t.stages,
+        [ev.stage]: { start: ev.tStart, first: ev.tFirst, end: ev.tEnd },
+      };
+    }
     switch (ev.stage) {
       case "stt":
         t.sttFinalMs = ev.tEnd - ev.tStart;

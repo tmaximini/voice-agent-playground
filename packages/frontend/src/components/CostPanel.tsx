@@ -1,6 +1,8 @@
 import { useSessionUsage } from "../lib/metricsStore";
 import { DEFAULT_PIPELINE } from "../data/providers";
 import { estimateCost, fmtUsd } from "../lib/cost";
+import { STAGES, type StageKey } from "../lib/stages";
+import { headingCls, panelCls } from "../lib/ui";
 
 // Session-accumulated usage per provider with a rough cost estimate.
 // Token/char counts come from the MetricEvent stream; STT is estimated from
@@ -16,36 +18,41 @@ export default function CostPanel() {
     ttsProvider: DEFAULT_PIPELINE.tts.provider,
   });
 
-  const rows = [
-    { stage: "stt", usage: `${(u.sessionMs / 60_000).toFixed(1)} min streamed`, cost: cost.stt },
-    { stage: "llm", usage: `${u.llmTokensIn} in · ${u.llmTokensOut} out tok`, cost: cost.llm },
-    { stage: "tts", usage: `${u.ttsChars} chars`, cost: cost.tts },
+  const rows: { stage: StageKey; label: string; usage: string; cost: number }[] = [
+    { stage: "stt", label: "Transcription", usage: `${(u.sessionMs / 60_000).toFixed(1)} min`, cost: cost.stt },
+    {
+      stage: "llm",
+      label: "LLM",
+      usage: `${u.llmTokensIn.toLocaleString("en-US")} in, ${u.llmTokensOut.toLocaleString("en-US")} out`,
+      cost: cost.llm,
+    },
+    { stage: "tts", label: "Speech", usage: `${u.ttsChars.toLocaleString("en-US")} chars`, cost: cost.tts },
   ];
 
   return (
-    <section className="rounded-xl bg-neutral-900/60 border border-neutral-800 p-4 space-y-2">
+    <section className={`${panelCls} p-5`}>
       <div className="flex items-baseline justify-between">
-        <h2 className="font-mono text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-          Session usage · est. cost
-        </h2>
-        <span className="font-mono text-sm font-medium tabular-nums text-neutral-200">
-          {fmtUsd(cost.total)}
-        </span>
+        <h2 className={headingCls}>Usage this session</h2>
+        <span className="text-lg font-medium tabular-nums">{fmtUsd(cost.total)}</span>
       </div>
-      <div className="space-y-1">
-        {rows.map((r) => (
-          <div
-            key={r.stage}
-            className="flex items-baseline justify-between gap-3 font-mono text-[11px] tabular-nums"
-          >
-            <span className="uppercase tracking-widest text-neutral-600">{r.stage}</span>
-            <span className="flex-1 text-right text-neutral-400">{r.usage}</span>
-            <span className="w-16 text-right text-neutral-300">{fmtUsd(r.cost)}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-neutral-600">
-        Estimates from list prices in <code>data/prices.ts</code> — edit for your plan.
+      <table className="mt-3 w-full text-[13px] tabular-nums">
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.stage} className="border-t border-line first:border-t-0">
+              <td className="py-2 text-muted">
+                <span className="flex items-center gap-2">
+                  <span aria-hidden className={`h-2 w-2 rounded-sm ${STAGES[r.stage].bg}`} />
+                  {r.label}
+                </span>
+              </td>
+              <td className="py-2 text-right text-muted">{r.usage}</td>
+              <td className="w-20 py-2 text-right">{fmtUsd(r.cost)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs text-faint">
+        Estimated from list prices in <code className="font-mono">data/prices.ts</code>. Edit them to match your plan.
       </p>
     </section>
   );
