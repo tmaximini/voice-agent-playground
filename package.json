@@ -8,6 +8,7 @@
   "scripts": {
     "dev:frontend": "pnpm -F @voice-playground/frontend dev",
     "dev:worker": "pnpm -F @voice-playground/worker dev",
+    "dev:cloud": "bash scripts/dev-cloud.sh",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck"
   },

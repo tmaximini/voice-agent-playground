@@ -8,4 +8,7 @@ livekit-plugins-deepgram>=1.0
 livekit-plugins-openai>=1.0
 livekit-plugins-elevenlabs>=1.0
 livekit-plugins-turn-detector>=1.0
+# Krisp noise cancellation (BVC kills speaker-echo feedback). Licensed for
+# LiveKit Cloud only — pipeline.py enables it solely on *.livekit.cloud URLs.
+livekit-plugins-noise-cancellation~=0.2
 python-dotenv>=1.0
